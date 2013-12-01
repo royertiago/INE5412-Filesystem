@@ -11,7 +11,6 @@
 /**
  * Just a few types (should be defined inside proper classes --just like enum in @class FileAttributes)
  */
-typedef unsigned int blockNumber;
 typedef unsigned int fileIdentifier;
 typedef unsigned long fileSize;
 

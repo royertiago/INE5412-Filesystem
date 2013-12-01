@@ -1,0 +1,61 @@
+Implementar maquinaria do flushInterval.
+
+Sérios vazamentos de memória: diskManager não deleta nenhum ponteiro
+que ele segura e não há deleção de blocos.
+
+Adicionar documentação dos métodos para diskManager.cpp
+
+Podemos separar os métodos do bitmap ainda mais: readBit e writeBit.
+
+O alocador de blocos assume que blockAmount é múltiplo de 8.
+Precisamos de uns if's a mais para remover esta restrição.
+O encapsulador do diskManager padece do mesmo problema.
+
+Adicionar detecção de erro (falta de blocos para alocar) em
+-ResourceAllocator
+-Bitmap
+-DiskManager
+
+Block constrói (e lista) physicalSource e size antes de rawData, entretanto
+a ordem dos parâmetros no construtor está invertida.
+
+    Ideias:
+
+bitmap.cpp define várias funções para manipulação de bits. 
+Talvez separá-las num .h?
+
+Bitmap.cpp usa os bytes dos blocos como uma matriz. Poderia ser
+criada uma classe MatrixIterator que acelerará o processo de iterar
+sobre todos os bytes dos storageBlocks.
+
+Criei as funções Block::readByte e Block::writeByte para acelerar
+as operações do Bitmap. Não estão muito bem construídas estas funções.
+
+Um Block contém como campo o tamanho do bloco. Esta informação
+talvez não seja necessária. -> É usada pelo bitmap
+
+Os campos Block::physicalSource e Block::blockSize são const public.
+Não consegui pensar numa melhor alternativa para o fato de o número
+do bloco ser necessário em tantos lugares diferentes (dois).
+De fato, não consegui nem pensar num nome melhor que physicalSource.
+
+    Problemas conhecidos:
+
+ResourceAllocator::getFreeResourceCount() retorna apenas unsigned int.
+Ele não é capaz de contar a quantidade de blocos de um disco de 8 TB,
+com blocos de 1KB de tamanho, por exemplo.
+
+Não existe uma forma de o Storage informar erros de escrita/leitura
+de blocos.
+
+RAMDisk assume controle dos blocos alocados. Então, criar um RAMDisk
+cujo parâmetro é outro RAMDisk causará sérios problemas de controle
+de blocos em memória - dois objetos serão donos do mesmo ponteiro.
+
+Embora RAMDisk::createBlock e RAMDisk::releaseBlock devem apenas ser
+chamadas pela classe resourceAllocator, elas são públicas.
+
+Não há controle algum de limpeza de blocos na memória.
+
+Não descobri como lidar efetivamente com duas chamadas a readBlock
+passando Block::flushInterval com valores diferentes em cada uma.

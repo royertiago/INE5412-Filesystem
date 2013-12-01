@@ -1,54 +1,69 @@
-#include "diskBlock.h"
+#include <cstdio>
+#include <cstring>
 
-//FIXME
-// endereco de base onde comecam os dados
-// nao sei se eh realmente eh necessario, mas por enquanto deixo assim
-int baseAddress;
+#include "storage.h"
+#include "block.h"
+#include "simulatedDisk.h"
 
-SimulatedDisk::SimulatedDisk(const unsigned int blocksize, blockNumber maxBlocks) : Disk(blocksize, maxBlocks)
+using std::strlen;
+using std::strcpy;
+using std::fopen;
+using std::fseek;
+using std::fclose;
+using std::fread;
+
+SimulatedDisk::SimulatedDisk(const char * file_name, size_t
+        blockSize, Block::number blockAmount)
+:
+    fileName( new char[strlen(file_name) + 1] ),
+    blockSize(blockSize),
+    blockAmount(blockAmount),
+    diskSize(blockSize * blockAmount)
 {
-   
-    diskBlocks[maxBlocks];
-    Disk(blocksize, maxBlocks);
+    strcpy( fileName, file_name );
 }
 
-void Disk::Disk(const unsigned int blocksize, blockNumber maxBlocks) {
-    setBlockSize(blocksize);
-    setMaxBlocks(maxBlocks);
-}
-//FIXME
-// flush deve receber o parametro diskBlocks
-void Disk::flush(DiskBlock diskBlocks[]) {
-    
-    for(int blockIdx=0; blockIdx < maxBlocks; blockIdx++) {
-        diskBlocks[blockIdx].writeBytes(baseAddress + (blockNumber * blocksize), blocksize, 0);
-    }
+Block * SimulatedDisk::readBlock(Block::number n, Block::flushInterval i) {
+    FILE * discoFofinho = fopen(fileName, "rb");
+    fseek(discoFofinho, n * blockSize, SEEK_SET);
+
+    unsigned char * data = new unsigned char[blockSize];
+
+    fread(data, 1, blockSize, discoFofinho);
+    fclose(discoFofinho);
+
+    return Storage::constructBlock(data, blockSize, n, i);
 }
 
-//FIXME
-// nao vejo necessidade de ultimo parametro, sendo que cada diskBlock possui 
-// um private member : rawData
-// por enquanto passo 0
-void Disk::readBlock(const blockNumber bn, DiskBlock* block) {
-    block->readBytes(baseAddress + (blockNumber * blocksize), blocksize, 0);
-}
-//FIXME
-void Disk::writeBlock(const blockNumber bn, const DiskBlock* block) {
-    block->readBytes(baseAddress + (blockNumber * blocksize), blocksize, 0);
+void SimulatedDisk::writeBlock(Block* block) {
+    FILE * discoFofinho = fopen(fileName, "rb+");
+    Block::number position = block->physicalSource;
+    fseek(discoFofinho, position * blockSize, SEEK_SET);
+
+    unsigned char * data = Storage::extractData(block);
+    fwrite(data, 1, blockSize, discoFofinho);
+    fclose(discoFofinho);
 }
 
-void Disk::setBlockSize(const unsigned int blocksize) {
-    this->blocksize = blocksize;
+void SimulatedDisk::format() {
+    FILE * discoFofinho = fopen(fileName, "wb" );
+    for( unsigned i = 0; i < diskSize; i++ )
+        fputc(0, discoFofinho);
+
+    fclose(discoFofinho);
 }
 
-void Disk::setMaxBlocks(const blockNumber maxBlocks) {
-    this->maxBlocks = maxBlocks;
+void SimulatedDisk::format(Block::number newBlockAmount) {
+    blockAmount = newBlockAmount;
+    blockSize = diskSize / newBlockAmount;
+
+    format();
 }
 
-int Disk::getBlockSize() {
-    return blocksize;
+size_t SimulatedDisk::getBlockSize() const {
+    return blockSize;
 }
 
-int Disk::getMaxBlocks() {
-    return maxBlocks;
+Block::number SimulatedDisk::getBlockAmount() const {
+    return blockAmount;
 }
